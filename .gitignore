@@ -1,0 +1,19 @@
+# Ignore compiled Python files
+*.pyc
+
+# Ignore the model checkpoints folder (if applicable)
+checkpoints/
+
+# Ignore the log files (if applicable)
+logs/
+
+# Ignore any generated documentation
+docs/
+
+# Ignore any IDE-specific files
+.vscode/
+.idea/
+
+# Ignore any system-specific files
+.DS_Store
+Thumbs.db
