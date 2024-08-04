@@ -6,6 +6,8 @@ from skimage.metrics import structural_similarity as compare_ssim
 from core.utils import preprocess, metrics
 import lpips
 import torch
+from skimage import __version__ as skimage_version
+from skimage.transform import resize
 
 loss_fn_alex = lpips.LPIPS(net='alex')
 
@@ -102,8 +104,26 @@ def test(model, test_input_handle, configs, itr):
             pred_frm = np.uint8(gx * 255)
 
             psnr[i] += metrics.batch_psnr(pred_frm, real_frm)
+            min_size= 7
             for b in range(configs.batch_size):
-                score, _ = compare_ssim(pred_frm[b], real_frm[b], full=True, multichannel=True)
+                pred=pred_frm[b]
+                real=real_frm[b]
+                
+                if pred.ndim == 2:
+                    pred = np.expand_dims(pred, axis=-1)
+                if real.ndim == 2:
+                    real = np.expand_dims(real, axis=-1)    
+                    
+               # 이미지 크기 확인 및 조정 (2번 수정사항)
+                if pred.shape[0] < min_size or pred.shape[1] < min_size:
+                    pred = resize(pred, (max(min_size, pred.shape[0]), max(min_size, pred.shape[1]), pred.shape[2]))
+                    real = resize(real, (max(min_size, real.shape[0]), max(min_size, real.shape[1]), real.shape[2]))
+                
+                # SSIM 계산 (1번 수정사항)
+                if skimage_version >= '0.18':
+                    score, _ = compare_ssim(pred, real, full=True, channel_axis=-1)
+                else:
+                    score, _ = compare_ssim(pred, real, full=True, multichannel=True)
                 ssim[i] += score
 
         # save prediction examples
