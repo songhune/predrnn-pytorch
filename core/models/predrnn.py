@@ -137,8 +137,6 @@ class BiDirectionalRNN(nn.Module):
 
         return forward_h, forward_c, forward_m
 
-        return forward_h, forward_c, forward_m
-
     def _backward_pass(self, frames, mask_true):
         batch = frames.shape[0]
         height = frames.shape[3]
