@@ -1,13 +1,13 @@
 export CUDA_VISIBLE_DEVICES=0
 cd ..
-python -u run.py \
+python3 -u run.py \
     --is_training 1 \
-    --device cuda \
+    --device cuda:0 \
     --dataset_name mnist \
-    --train_data_paths /workspace/wuhaixu/predrnn/data/moving-mnist-example/moving-mnist-train.npz \
-    --valid_data_paths /workspace/wuhaixu/predrnn/data/moving-mnist-example/moving-mnist-valid.npz \
-    --save_dir checkpoints/mnist_predrnn \
-    --gen_frm_dir results/mnist_predrnn \
+    --train_data_paths /workspace/data/data/moving-mnist-example/moving-mnist-train.npz \
+    --valid_data_paths /workspace/data/data/moving-mnist-example/moving-mnist-valid.npz \
+    --save_dir /workspace/checkpoints/mnist_predrnn \
+    --gen_frm_dir /workspace/results/mnist_predrnn \
     --model_name predrnn \
     --reverse_input 1 \
     --img_width 64 \
