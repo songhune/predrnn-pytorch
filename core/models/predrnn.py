@@ -12,7 +12,7 @@ class BiDirectionalRNN(nn.Module):
         self.configs = configs
         self.frame_channel = configs.patch_size * configs.patch_size * configs.img_channel
         self.num_layers = num_layers
-        self.num_hidden = num_hidden
+        self.num_hidden = [h * 2 for h in num_hidden]
         cell_list = []
 
         width = configs.img_width // configs.patch_size
@@ -24,19 +24,21 @@ class BiDirectionalRNN(nn.Module):
                 SpatioTemporalLSTMCell(in_channel, num_hidden[i], width, configs.filter_size,
                                        configs.stride, configs.layer_norm)
             )
-               # 순방향, 역방향 LSTM 셀 생성
+    # 순방향, 역방향 LSTM 셀 (채널 수 변화 없음)
         self.forward_cells = nn.ModuleList([
-            SpatioTemporalLSTMCell(in_channel, num_hidden[i], width, configs.filter_size,
-                                   configs.stride, configs.layer_norm)
+            SpatioTemporalLSTMCell(self.frame_channel if i == 0 else self.num_hidden[i-1],
+                                self.num_hidden[i], width, configs.filter_size,
+                                configs.stride, configs.layer_norm)
             for i in range(num_layers)
         ])
         self.backward_cells = nn.ModuleList([
-            SpatioTemporalLSTMCell(in_channel, num_hidden[i], width, configs.filter_size,
-                                   configs.stride, configs.layer_norm)
+            SpatioTemporalLSTMCell(self.frame_channel if i == 0 else self.num_hidden[i-1],
+                                self.num_hidden[i], width, configs.filter_size,
+                                configs.stride, configs.layer_norm)
             for i in range(num_layers)
         ])
         
-        # 출력을 위한 컨볼루션 레이어 수정 (hidden state 크기가 2배가 됨)
+                # 최종 출력 레이어 (채널 수를 원래대로 줄임)
         self.conv_last = nn.Conv2d(num_hidden[num_layers - 1] * 2, self.frame_channel,
                                    kernel_size=1, stride=1, padding=0, bias=False)
 
@@ -55,15 +57,19 @@ class BiDirectionalRNN(nn.Module):
         backward_h, backward_c, backward_m = self._backward_pass(frames, mask_true)
         
         # 양방향 출력 결합 및 다음 프레임 생성
-        for t in range(self.configs.total_length - 1):
-            combined_h = torch.cat([forward_h[t], backward_h[t]], dim=1)
+        for t in range(self.configs.total_length - self.configs.input_length):
+            combined_h = torch.cat([forward_h[t + self.configs.input_length], backward_h[t]], dim=1)
             x_gen = self.conv_last(combined_h)
             next_frames.append(x_gen)
 
         # [length, batch, channel, height, width] -> [batch, length, height, width, channel]
         next_frames = torch.stack(next_frames, dim=0).permute(1, 0, 3, 4, 2).contiguous()
-        loss = self.MSE_criterion(next_frames, frames_tensor[:, 1:])
+        
+        loss = self.MSE_criterion(next_frames, frames_tensor[:, self.configs.input_length:])
         return next_frames, loss
+
+
+    
     def _forward_pass(self, frames, mask_true):
         batch = frames.shape[0]
         height = frames.shape[3]
@@ -101,6 +107,8 @@ class BiDirectionalRNN(nn.Module):
 
         return forward_h, forward_c, forward_m
 
+        return forward_h, forward_c, forward_m
+
     def _backward_pass(self, frames, mask_true):
         batch = frames.shape[0]
         height = frames.shape[3]
@@ -119,12 +127,14 @@ class BiDirectionalRNN(nn.Module):
         backward_c = []
         backward_m = []
 
-        for t in range(self.configs.total_length - 1, 0, -1):
+        x_gen = frames[:, -1]  # Initialize x_gen with the last frame
+
+        for t in range(self.configs.total_length - 1, self.configs.input_length - 1, -1):
             if t >= self.configs.input_length:
                 net = frames[:, t]
             else:
-                net = mask_true[:, t] * frames[:, t] + \
-                      (1 - mask_true[:, t]) * x_gen
+                net = mask_true[:, t - self.configs.input_length] * frames[:, t] + \
+                    (1 - mask_true[:, t - self.configs.input_length]) * x_gen
 
             h_t[0], c_t[0], memory = self.backward_cells[0](net, h_t[0], c_t[0], memory)
 
