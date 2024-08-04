@@ -88,13 +88,11 @@ class BiDirectionalRNN(nn.Module):
                 # 순방향과 역방향 결과 결합
                 combined_h = torch.cat([forward_h, backward_h], dim=1)
                 x_gen = self.conv_last(combined_h)
-
-                if t >= self.configs.input_length:
-                    next_frames.append(x_gen)
+                next_frames.append(x_gen)
 
         # [length, batch, channel, height, width] -> [batch, length, height, width, channel]
         next_frames = torch.stack(next_frames, dim=0).permute(1, 0, 3, 4, 2).contiguous()
-        
+            
         loss = self.MSE_criterion(next_frames, frames_tensor[:, self.configs.input_length:])
         return next_frames, loss
 
@@ -116,7 +114,7 @@ class BiDirectionalRNN(nn.Module):
         forward_c = []
         forward_m = []
 
-        for t in range(self.configs.total_length - 1):
+        for t in range(self.configs.total_length - self.configs.input_length):
             if t < self.configs.input_length:
                 net = frames[:, t]
             else:
