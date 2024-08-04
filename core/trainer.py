@@ -8,6 +8,7 @@ import lpips
 import torch
 from skimage import __version__ as skimage_version
 from skimage.transform import resize
+import csv
 
 loss_fn_alex = lpips.LPIPS(net='alex')
 
@@ -25,6 +26,9 @@ def train(model, ims, real_input_flag, configs, itr):
 
 
 def test(model, test_input_handle, configs, itr):
+    # 결과를 저장할 디렉토리 생성
+    result_dir = os.path.join(configs.gen_frm_dir, 'results')
+    os.makedirs(result_dir, exist_ok=True)
     print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'test...')
     test_input_handle.begin(do_shuffle=False)
     res_path = os.path.join(configs.gen_frm_dir, str(itr))
@@ -164,3 +168,20 @@ def test(model, test_input_handle, configs, itr):
     print('lpips per frame: ' + str(np.mean(lp)))
     for i in range(configs.total_length - configs.input_length):
         print(lp[i])
+
+    # 결과를 저장할 CSV 파일 생성
+    csv_file = os.path.join(result_dir, f'test_results_itr{itr}.csv')
+    
+    with open(csv_file, 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Frame', 'MSE', 'SSIM', 'PSNR', 'LPIPS'])
+
+        # 각 프레임별 결과 저장
+        for i in range(configs.total_length - configs.input_length):
+            mse = img_mse[i] / (batch_id * configs.batch_size)
+            writer.writerow([i+1, mse, ssim[i], psnr[i], lp[i]])
+
+        # 평균값 저장
+        writer.writerow(['Average', avg_mse, np.mean(ssim), np.mean(psnr), np.mean(lp)])
+
+    print(f"Results saved to {csv_file}")
