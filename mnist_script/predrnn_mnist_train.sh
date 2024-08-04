@@ -14,7 +14,7 @@ python3 -u run.py \
     --img_channel 1 \
     --input_length 10 \
     --total_length 20 \
-    --num_hidden 128,128,128,128 \
+    --num_hidden 64,64,64,64 \
     --filter_size 5 \
     --stride 1 \
     --patch_size 4 \

@@ -12,7 +12,7 @@ class BiDirectionalRNN(nn.Module):
         self.configs = configs
         self.frame_channel = configs.patch_size * configs.patch_size * configs.img_channel
         self.num_layers = num_layers
-        self.num_hidden = [h * 2 for h in num_hidden]
+        self.num_hidden = num_hidden
         cell_list = []
 
         width = configs.img_width // configs.patch_size
@@ -37,10 +37,9 @@ class BiDirectionalRNN(nn.Module):
                                 configs.stride, configs.layer_norm)
             for i in range(num_layers)
         ])
-        
                 # 최종 출력 레이어 (채널 수를 원래대로 줄임)
-        self.conv_last = nn.Conv2d(num_hidden[num_layers - 1] * 2, self.frame_channel,
-                                   kernel_size=1, stride=1, padding=0, bias=False)
+        self.conv_last = nn.Conv2d(self.num_hidden[num_layers - 1] * 2, self.frame_channel,
+                           kernel_size=1, stride=1, padding=0, bias=False)
 
 
     def forward(self, frames_tensor, mask_true):
@@ -48,19 +47,50 @@ class BiDirectionalRNN(nn.Module):
         frames = frames_tensor.permute(0, 1, 4, 2, 3).contiguous()
         mask_true = mask_true.permute(0, 1, 4, 2, 3).contiguous()
 
+        batch = frames.shape[0]
+        height = frames.shape[3]
+        width = frames.shape[4]
+
         next_frames = []
-        
-        # 순방향 LSTM
-        forward_h, forward_c, forward_m = self._forward_pass(frames, mask_true)
-        
-        # 역방향 LSTM
-        backward_h, backward_c, backward_m = self._backward_pass(frames, mask_true)
-        
-        # 양방향 출력 결합 및 다음 프레임 생성
-        for t in range(self.configs.total_length - self.configs.input_length):
-            combined_h = torch.cat([forward_h[t + self.configs.input_length], backward_h[t]], dim=1)
-            x_gen = self.conv_last(combined_h)
-            next_frames.append(x_gen)
+        h_t = []
+        c_t = []
+
+        for i in range(self.num_layers):
+            zeros = torch.zeros([batch, self.num_hidden[i], height, width]).to(self.configs.device)
+            h_t.append(zeros)
+            c_t.append(zeros)
+
+        memory = torch.zeros([batch, self.num_hidden[0], height, width]).to(self.configs.device)
+
+        for t in range(self.configs.total_length - 1):
+            # 순방향 LSTM
+            if t < self.configs.input_length:
+                net = frames[:, t]
+            else:
+                net = mask_true[:, t - self.configs.input_length] * frames[:, t] + \
+                    (1 - mask_true[:, t - self.configs.input_length]) * x_gen
+
+            h_t[0], c_t[0], memory = self.forward_cells[0](net, h_t[0], c_t[0], memory)
+
+            for i in range(1, self.num_layers):
+                h_t[i], c_t[i], memory = self.forward_cells[i](h_t[i - 1], h_t[i], c_t[i], memory)
+
+            forward_h = h_t[-1]
+
+            # 역방향 LSTM (마지막 프레임부터 시작)
+            if t >= self.configs.input_length - 1:
+                backward_net = frames[:, -t-1]
+                backward_h, backward_c, backward_memory = self.backward_cells[0](backward_net, h_t[0], c_t[0], memory)
+
+                for i in range(1, self.num_layers):
+                    backward_h, backward_c, backward_memory = self.backward_cells[i](backward_h, h_t[i], c_t[i], backward_memory)
+
+                # 순방향과 역방향 결과 결합
+                combined_h = torch.cat([forward_h, backward_h], dim=1)
+                x_gen = self.conv_last(combined_h)
+
+                if t >= self.configs.input_length:
+                    next_frames.append(x_gen)
 
         # [length, batch, channel, height, width] -> [batch, length, height, width, channel]
         next_frames = torch.stack(next_frames, dim=0).permute(1, 0, 3, 4, 2).contiguous()
@@ -68,8 +98,6 @@ class BiDirectionalRNN(nn.Module):
         loss = self.MSE_criterion(next_frames, frames_tensor[:, self.configs.input_length:])
         return next_frames, loss
 
-
-    
     def _forward_pass(self, frames, mask_true):
         batch = frames.shape[0]
         height = frames.shape[3]
@@ -99,6 +127,8 @@ class BiDirectionalRNN(nn.Module):
 
             for i in range(1, self.num_layers):
                 h_t[i], c_t[i], memory = self.forward_cells[i](h_t[i - 1], h_t[i], c_t[i], memory)
+                print(f"Forward pass - Layer {i}, Time step {t}: h_t shape = {h_t[i].shape}")
+
 
             x_gen = self.conv_last(h_t[self.num_layers - 1])
             forward_h.append(h_t[-1])
@@ -140,6 +170,7 @@ class BiDirectionalRNN(nn.Module):
 
             for i in range(1, self.num_layers):
                 h_t[i], c_t[i], memory = self.backward_cells[i](h_t[i - 1], h_t[i], c_t[i], memory)
+                print(f"Backward pass - Layer {i}, Time step {t}: h_t shape = {h_t[i].shape}")
 
             x_gen = self.conv_last(h_t[self.num_layers - 1])
             backward_h.insert(0, h_t[-1])
