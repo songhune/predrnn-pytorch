@@ -1,19 +1,18 @@
 import os
 import torch
 from torch.optim import Adam
-from core.models import predrnn, predrnn_v2, action_cond_predrnn, action_cond_predrnn_v2 , bidirectional_predrnn
-
+from core.models import predrnn, predrnn_v2, action_cond_predrnn, action_cond_predrnn_v2 
 class Model(object):
     def __init__(self, configs):
         self.configs = configs
         self.num_hidden = [int(x) for x in configs.num_hidden.split(',')]
         self.num_layers = len(self.num_hidden)
         networks_map = {
-            'predrnn': predrnn.RNN,
+            'predrnn': predrnn.BiDirectionalRNN,
             'predrnn_v2': predrnn_v2.RNN,
             'action_cond_predrnn': action_cond_predrnn.RNN,
             'action_cond_predrnn_v2': action_cond_predrnn_v2.RNN,
-            'bidirectional_predrnn': bidirectional_predrnn.BiDirectionalRNN
+            
         }
 
         if configs.model_name in networks_map:
