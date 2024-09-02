@@ -177,35 +177,47 @@ class DataProcess:
             frames_person_mark.append(frame.person_mark)
             frames_category.append(frame.category_flag)
             
-        # identify sequences of <seq_len> within the same video
+        # 시퀀스 식별 부분 수정
         indices = []
         seq_end_idx = len(frames_person_mark) - 1
         while seq_end_idx >= self.seq_len - 1:
             seq_start_idx = seq_end_idx - self.seq_len + 1
             if frames_person_mark[seq_end_idx] == frames_person_mark[seq_start_idx]:
                 # Get person ID at the start and end of this sequence (of seq_len)
-                end = int(frames_file_name[seq_end_idx][6:10])
-                start = int(frames_file_name[seq_start_idx][6:10])
+                end_frame = frames_file_name[seq_end_idx]
+                start_frame = frames_file_name[seq_start_idx]
                 
-                # TODO: mode == 'test'
-                if end - start == self.seq_len - 1:
-                    # Save index into OUT data array indicating start point of sequence
-                    indices.append(seq_start_idx)
+                try:
+                    end = int(end_frame.split('-')[1].split('.')[0])
+                    start = int(start_frame.split('-')[1].split('.')[0])
+                    
+                    # '999' 처리
+                    if end == 999:
+                        end = len(frames_file_name) - 1  # 또는 다른 적절한 값
+                    
+                    if end - start == self.seq_len - 1:
+                        # Save index into OUT data array indicating start point of sequence
+                        indices.append(seq_start_idx)
 
-                    # The step size depends on the category
-                    if frames_category[seq_end_idx] == 1:
-                        seq_end_idx -= self.seq_len - 1
-                    elif frames_category[seq_end_idx] == 2:
-                        seq_end_idx -= 2
+                        # The step size depends on the category
+                        if frames_category[seq_end_idx] == 1:
+                            seq_end_idx -= self.seq_len - 1
+                        elif frames_category[seq_end_idx] == 2:
+                            seq_end_idx -= 2
+                        else:
+                            raise Exception("category error 2 !!!")
                     else:
-                        raise Exception("category error 2 !!!")
-            
-            seq_end_idx -= 1
+                        seq_end_idx -= 1
+                except ValueError:
+                    print(f"Warning: Skipping invalid filename: {start_frame} - {end_frame}")
+                    seq_end_idx -= 1
+            else:
+                seq_end_idx -= 1
 
         print("there are " + str(data.shape[0]) + " pictures")
         print("there are " + str(len(indices)) + " sequences")
         return data, indices
-
+    
     def get_train_input_handle(self):
         train_data, train_indices = self.load_data(self.paths, mode='train')
         return InputHandle(train_data, train_indices, self.input_param)

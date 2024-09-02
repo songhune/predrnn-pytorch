@@ -4,10 +4,10 @@ python3 -u run.py \
     --is_training 1 \
     --device cuda \
     --dataset_name action \
-    --train_data_paths /workspace/wuhaixu/predrnn/data/kth_action \
-    --valid_data_paths /workspace/wuhaixu/predrnn/data/kth_action \
-    --save_dir checkpoints/kth_predrnn \
-    --gen_frm_dir results/kth_predrnn \
+    --train_data_paths /workspace/data/data/kth_action \
+    --valid_data_paths /workspace/data/data/kth_action \
+    --save_dir /workspace/checkpoints/kth_predrnn \
+    --gen_frm_dir /workspace/results/kth_predrnn \
     --model_name predrnn \
     --reverse_input 1 \
     --img_width 128 \
