@@ -1,13 +1,12 @@
-__author__ = 'yunbo'
+__author__ = 'songhune'
 
 import torch
 import torch.nn as nn
 from core.layers.SpatioTemporalLSTMCell_action import SpatioTemporalLSTMCell
 
-
-class RNN(nn.Module):
+class BiDirectionalRNN(nn.Module):
     def __init__(self, num_layers, num_hidden, configs):
-        super(RNN, self).__init__()
+        super(BiDirectionalRNN, self).__init__()
 
         self.configs = configs
         self.conv_on_input = self.configs.conv_on_input
@@ -32,31 +31,35 @@ class RNN(nn.Module):
                                                 stride=2, padding=configs.filter_size // 2, bias=False)
             self.action_conv_input2 = nn.Conv2d(num_hidden[0] // 2, num_hidden[0], configs.filter_size, stride=2,
                                                 padding=configs.filter_size // 2, bias=False)
-            self.deconv_output1 = nn.ConvTranspose2d(num_hidden[num_layers - 1], num_hidden[num_layers - 1] // 2,
+            self.deconv_output1 = nn.ConvTranspose2d(num_hidden[num_layers - 1] * 2, num_hidden[num_layers - 1],
                                                      configs.filter_size, stride=2, padding=configs.filter_size // 2,
                                                      bias=False)
-            self.deconv_output2 = nn.ConvTranspose2d(num_hidden[num_layers - 1] // 2, self.patch_ch,
+            self.deconv_output2 = nn.ConvTranspose2d(num_hidden[num_layers - 1], self.patch_ch,
                                                      configs.filter_size, stride=2, padding=configs.filter_size // 2,
                                                      bias=False)
+
         self.num_layers = num_layers
         self.num_hidden = num_hidden
-        cell_list = []
         self.beta = configs.decouple_beta
         self.MSE_criterion = nn.MSELoss().cuda()
         self.norm_criterion = nn.SmoothL1Loss().cuda()
 
-        for i in range(num_layers):
-            if i == 0:
-                in_channel = self.patch_ch + self.action_ch if self.configs.conv_on_input == 0 else num_hidden[0]
-            else:
-                in_channel = num_hidden[i - 1]
-            cell_list.append(
-                SpatioTemporalLSTMCell(in_channel, num_hidden[i], self.rnn_width,
-                                       configs.filter_size, configs.stride, configs.layer_norm)
-            )
-        self.cell_list = nn.ModuleList(cell_list)
+        # 순방향, 역방향 LSTM 셀
+        self.forward_cells = nn.ModuleList([
+            SpatioTemporalLSTMCell(num_hidden[0] if i == 0 else num_hidden[i-1],
+                                   num_hidden[i], self.rnn_width,
+                                   configs.filter_size, configs.stride, configs.layer_norm)
+            for i in range(num_layers)
+        ])
+        self.backward_cells = nn.ModuleList([
+            SpatioTemporalLSTMCell(num_hidden[0] if i == 0 else num_hidden[i-1],
+                                   num_hidden[i], self.rnn_width,
+                                   configs.filter_size, configs.stride, configs.layer_norm)
+            for i in range(num_layers)
+        ])
+
         if self.configs.conv_on_input == 0:
-            self.conv_last = nn.Conv2d(num_hidden[num_layers - 1], self.patch_ch + self.action_ch, 1, stride=1,
+            self.conv_last = nn.Conv2d(num_hidden[num_layers - 1] * 2, self.patch_ch, 1, stride=1,
                                        padding=0, bias=False)
 
     def forward(self, all_frames, mask_true):
@@ -79,11 +82,11 @@ class RNN(nn.Module):
         memory = torch.zeros([self.configs.batch_size, self.num_hidden[0], self.rnn_height, self.rnn_width]).cuda()
 
         for t in range(self.configs.total_length - 1):
-            if t == 0:
+            if t < self.configs.input_length:
                 net = input_frames[:, t]
             else:
-                net = mask_true[:, t - 1] * input_frames[:, t] + \
-                      (1 - mask_true[:, t - 1]) * x_gen
+                net = mask_true[:, t - self.configs.input_length] * input_frames[:, t] + \
+                    (1 - mask_true[:, t - self.configs.input_length]) * x_gen
             action = input_actions[:, t]
 
             if self.conv_on_input == 1:
@@ -98,24 +101,47 @@ class RNN(nn.Module):
                 action = self.action_conv_input1(action)
                 action = self.action_conv_input2(action)
 
-            h_t[0], c_t[0], memory = self.cell_list[0](net, h_t[0], c_t[0], memory, action)
+            # 순방향 LSTM
+            h_t[0], c_t[0], memory = self.forward_cells[0](net, h_t[0], c_t[0], memory, action)
 
             for i in range(1, self.num_layers):
-                h_t[i], c_t[i], memory = self.cell_list[i](h_t[i - 1], h_t[i], c_t[i], memory, action)
+                h_t[i], c_t[i], memory = self.forward_cells[i](h_t[i - 1], h_t[i], c_t[i], memory, action)
 
-            if self.conv_on_input == 1:
-                if self.res_on_conv == 1:
-                    x_gen = self.deconv_output1(h_t[self.num_layers - 1] + input_net2, output_size=net_shape2)
-                    x_gen = self.deconv_output2(x_gen + input_net1, output_size=net_shape1)
+            forward_h = h_t[-1]
+
+            # 역방향 LSTM (마지막 프레임부터 시작)
+            if t >= self.configs.input_length - 1:
+                backward_net = input_frames[:, -t-1]
+                backward_action = input_actions[:, -t-1]
+                
+                if self.conv_on_input == 1:
+                    backward_net = self.conv_input1(backward_net)
+                    backward_net = self.conv_input2(backward_net)
+                    backward_action = self.action_conv_input1(backward_action)
+                    backward_action = self.action_conv_input2(backward_action)
+
+                backward_h, backward_c, backward_memory = self.backward_cells[0](backward_net, h_t[0], c_t[0], memory, backward_action)
+
+                for i in range(1, self.num_layers):
+                    backward_h, backward_c, backward_memory = self.backward_cells[i](backward_h, h_t[i], c_t[i], backward_memory, backward_action)
+
+                # 순방향과 역방향 결과 결합
+                combined_h = torch.cat([forward_h, backward_h], dim=1)
+
+                if self.conv_on_input == 1:
+                    if self.res_on_conv == 1:
+                        x_gen = self.deconv_output1(combined_h + input_net2, output_size=net_shape2)
+                        x_gen = self.deconv_output2(x_gen + input_net1, output_size=net_shape1)
+                    else:
+                        x_gen = self.deconv_output1(combined_h, output_size=net_shape2)
+                        x_gen = self.deconv_output2(x_gen, output_size=net_shape1)
                 else:
-                    x_gen = self.deconv_output1(h_t[self.num_layers - 1], output_size=net_shape2)
-                    x_gen = self.deconv_output2(x_gen, output_size=net_shape1)
-            else:
-                x_gen = self.conv_last(h_t[self.num_layers - 1])
-            next_frames.append(x_gen)
+                    x_gen = self.conv_last(combined_h)
+
+                next_frames.append(x_gen)
 
         # [length, batch, channel, height, width] -> [batch, length, height, width, channel]
         next_frames = torch.stack(next_frames, dim=0).permute(1, 0, 3, 4, 2).contiguous()
-        loss = self.MSE_criterion(next_frames, all_frames[:, 1:, :, :, :next_frames.shape[4]])
+        loss = self.MSE_criterion(next_frames, all_frames[:, self.configs.input_length:, :, :, :next_frames.shape[4]])
         next_frames = next_frames[:, :, :, :, :self.patch_ch]
         return next_frames, loss

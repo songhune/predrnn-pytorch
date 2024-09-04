@@ -2,7 +2,7 @@ export CUDA_VISIBLE_DEVICES=1
 cd ..
 python3 -u run.py \
     --is_training 1 \
-    --device cuda:0 \
+    --device cuda \
     --dataset_name mnist \
     --train_data_paths /workspace/data/data/moving-mnist-example/moving-mnist-train.npz \
     --valid_data_paths /workspace/data/data/moving-mnist-example/moving-mnist-valid.npz \
