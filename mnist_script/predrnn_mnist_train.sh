@@ -2,19 +2,21 @@ export CUDA_VISIBLE_DEVICES=1
 cd ..
 python3 -u run.py \
     --is_training 1 \
-    --device cuda:0 \
+    --device cuda \
     --dataset_name mnist \
     --train_data_paths /workspace/data/data/moving-mnist-example/moving-mnist-train.npz \
     --valid_data_paths /workspace/data/data/moving-mnist-example/moving-mnist-valid.npz \
-    --save_dir /workspace/checkpoints/mnist_predrnn \
-    --gen_frm_dir /workspace/results/mnist_predrnn \
+    --save_dir /workspace/checkpoints/mnist_predrnn_localbi \
+    --gen_frm_dir /workspace/results/mnist_predrnn_localbi \
     --model_name predrnn \
     --reverse_input 1 \
+    --min_window_size 5 \
+    --max_window_size 10 \
     --img_width 64 \
     --img_channel 1 \
     --input_length 10 \
     --total_length 20 \
-    --num_hidden 256,256,256,256 \
+    --num_hidden 128,128,128,128 \
     --filter_size 5 \
     --stride 1 \
     --patch_size 4 \

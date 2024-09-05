@@ -37,6 +37,8 @@ parser.add_argument('--stride', type=int, default=1)
 parser.add_argument('--patch_size', type=int, default=4)
 parser.add_argument('--layer_norm', type=int, default=1)
 parser.add_argument('--decouple_beta', type=float, default=0.1)
+parser.add_argument('--min_window_size', type=int, default=5)
+parser.add_argument('--max_window_size', type=int, default=5)
 
 # reverse scheduled sampling
 parser.add_argument('--reverse_scheduled_sampling', type=int, default=0)

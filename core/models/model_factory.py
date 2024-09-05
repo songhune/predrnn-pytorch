@@ -1,7 +1,7 @@
 import os
 import torch
 from torch.optim import Adam
-from core.models import predrnn, predrnn_v2, action_cond_predrnn, action_cond_predrnn_v2 
+from core.models import predrnn, predrnn_v2, action_cond_predrnn, action_cond_predrnn_v2, predrnn_localbi
 class Model(object):
     def __init__(self, configs):
         self.configs = configs

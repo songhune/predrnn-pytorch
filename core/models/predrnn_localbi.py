@@ -8,7 +8,7 @@ from core.layers.SpatioTemporalLSTMCell import SpatioTemporalLSTMCell
 class OpticalFlowEstimator(nn.Module):
     def __init__(self):
         super(OpticalFlowEstimator, self).__init__()
-        self.conv1 = nn.Conv2d(2, 64, kernel_size=7, stride=2, padding=3)
+        self.conv1 = nn.Conv2d(2, 64, kernel_size=7, stride=2, padding=3)  # 입력 채널을 2로 변경
         self.conv2 = nn.Conv2d(64, 32, kernel_size=5, stride=2, padding=2)
         self.conv3 = nn.Conv2d(32, 2, kernel_size=3, stride=1, padding=1)
         
@@ -45,19 +45,20 @@ class BiDirectionalRNN(nn.Module):
                 SpatioTemporalLSTMCell(in_channel, num_hidden[i], width, configs.filter_size,
                                        configs.stride, configs.layer_norm)
             )
-    # 순방향, 역방향 LSTM 셀 (채널 수 변화 없음)
-        self.forward_cells = nn.ModuleList([
-            SpatioTemporalLSTMCell(self.frame_channel if i == 0 else self.num_hidden[i-1],
-                                self.num_hidden[i], width, configs.filter_size,
-                                configs.stride, configs.layer_norm)
-            for i in range(num_layers)
-        ])
-        self.backward_cells = nn.ModuleList([
-            SpatioTemporalLSTMCell(self.frame_channel if i == 0 else self.num_hidden[i-1],
-                                self.num_hidden[i], width, configs.filter_size,
-                                configs.stride, configs.layer_norm)
-            for i in range(num_layers)
-        ])
+    # # 순방향, 역방향 LSTM 셀 (채널 수 변화 없음)
+    #     self.forward_cells = nn.ModuleList([
+    #         SpatioTemporalLSTMCell(self.frame_channel if i == 0 else self.num_hidden[i-1],
+    #                             self.num_hidden[i], width, configs.filter_size,
+    #                             configs.stride, configs.layer_norm)
+    #         for i in range(num_layers)
+    #     ])
+    #     self.backward_cells = nn.ModuleList([
+    #         SpatioTemporalLSTMCell(self.frame_channel if i == 0 else self.num_hidden[i-1],
+    #                             self.num_hidden[i], width, configs.filter_size,
+    #                             configs.stride, configs.layer_norm)
+    #         for i in range(num_layers)
+    #     ])
+        self.cell_list = nn.ModuleList(cell_list)
                 # 최종 출력 레이어 (채널 수를 원래대로 줄임)
         self.conv_last = nn.Conv2d(self.num_hidden[num_layers - 1] * 2, self.frame_channel,
                            kernel_size=1, stride=1, padding=0, bias=False)
@@ -94,20 +95,21 @@ class BiDirectionalRNN(nn.Module):
             start = max(0, t - window_size // 2)
             end = min(self.configs.total_length - 1, t + window_size // 2)
             
-            # Forward pass
-            for i in range(start, t+1):
-                net = self._get_input(frames, mask_true, x_gen, i)
-                h_t_forward[0], c_t_forward[0], memory = self.cell_list[0](net, h_t_forward[0], c_t_forward[0], memory, direction='forward')
-                for j in range(1, self.num_layers):
-                    h_t_forward[j], c_t_forward[j], memory = self.cell_list[j](h_t_forward[j-1], h_t_forward[j], c_t_forward[j], memory, direction='forward')
+            x_gen = frames[:, t]  # Initialize x_gen with the current frame
+        # Forward pass
+        for i in range(start, t+1):
+            net = self._get_input(frames, mask_true, x_gen, i)
+            h_t_forward[0], c_t_forward[0], memory = self.cell_list[0](net, h_t_forward[0], c_t_forward[0], memory)
+            for j in range(1, self.num_layers):
+                h_t_forward[j], c_t_forward[j], memory = self.cell_list[j](h_t_forward[j-1], h_t_forward[j], c_t_forward[j], memory)
 
-            # Backward pass
-            for i in range(end, t, -1):
-                net = self._get_input(frames, mask_true, x_gen, i)
-                h_t_backward[0], c_t_backward[0], memory = self.cell_list[0](net, h_t_backward[0], c_t_backward[0], memory, direction='backward')
-                for j in range(1, self.num_layers):
-                    h_t_backward[j], c_t_backward[j], memory = self.cell_list[j](h_t_backward[j-1], h_t_backward[j], c_t_backward[j], memory, direction='backward')
-
+        # Backward pass
+        for i in range(end, t, -1):
+            net = self._get_input(frames, mask_true, x_gen, i)
+            h_t_backward[0], c_t_backward[0], memory = self.cell_list[0](net, h_t_backward[0], c_t_backward[0], memory)
+            for j in range(1, self.num_layers):
+                h_t_backward[j], c_t_backward[j], memory = self.cell_list[j](h_t_backward[j-1], h_t_backward[j], c_t_backward[j], memory)
+                
             # Combine forward and backward hidden states
             h_combined = [torch.cat([h_f, h_b], dim=1) for h_f, h_b in zip(h_t_forward, h_t_backward)]
             
@@ -214,7 +216,12 @@ class BiDirectionalRNN(nn.Module):
         return net
     def _compute_dynamic_window_size(self, frames):
         # 옵티컬 플로우 계산
-        flow = self.optical_flow_estimator(torch.cat([frames[:, 0], frames[:, -1]], dim=1))
+
+        # frames의 shape: [batch, time, channel, height, width]
+        first_frame = frames[:, 0, :, :, :]  # 첫 번째 프레임
+        last_frame = frames[:, -1, :, :, :]  # 마지막 프레임
+        flow_input = torch.cat([first_frame, last_frame], dim=1)  # 채널 차원을 따라 연결
+        flow = self.optical_flow_estimator(flow_input)
         flow_magnitude = torch.sqrt(flow[:, 0]**2 + flow[:, 1]**2)
         motion_score = flow_magnitude.mean()
 
