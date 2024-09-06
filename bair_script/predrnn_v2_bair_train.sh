@@ -1,6 +1,6 @@
 export CUDA_VISIBLE_DEVICES=1
 cd ..
-python -u run.py \
+python3 -u run.py \
     --is_training 1 \
     --device cuda \
     --dataset_name bair \

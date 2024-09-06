@@ -3,5 +3,9 @@ numpy
 scikit-learn
 scikit-image
 lpips
+<<<<<<< HEAD
 tensorflow
 opencv-python
+=======
+opencv-python
+>>>>>>> 0ba085fd97d81dd32261db69465a76c63ec22770

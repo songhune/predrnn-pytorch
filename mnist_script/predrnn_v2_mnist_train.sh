@@ -1,6 +1,6 @@
 export CUDA_VISIBLE_DEVICES=0
 cd ..
-python -u run.py \
+python3 -u run.py \
     --is_training 1 \
     --device cuda:0 \
     --dataset_name mnist \
