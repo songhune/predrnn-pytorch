@@ -2,19 +2,12 @@ export CUDA_VISIBLE_DEVICES=2
 cd ..
 python3 -u run.py \
     --is_training 1 \
-    --device cuda:0 \
+    --device cuda \
     --dataset_name mnist \
-<<<<<<< HEAD
-    --train_data_paths /data/songhune/data/moving-mnist-example/moving-mnist-train.npz \
-    --valid_data_paths /data/songhune/data/moving-mnist-example/moving-mnist-valid.npz \
+    --train_data_paths /data/songhune/dataset/moving-mnist-example/moving-mnist-train.npz \
+    --valid_data_paths /data/songhune/dataset/moving-mnist-example/moving-mnist-valid.npz \
     --save_dir /data/songhune/checkpoints/mnist_predrnn256 \
     --gen_frm_dir /data/songhune/results/mnist_predrnn256 \
-=======
-    --train_data_paths /workspace/data/data/moving-mnist-example/moving-mnist-train.npz \
-    --valid_data_paths /workspace/data/data/moving-mnist-example/moving-mnist-valid.npz \
-    --save_dir /workspace/checkpoints/mnist_predrnn \
-    --gen_frm_dir /workspace/results/mnist_predrnn \
->>>>>>> 0ba085fd97d81dd32261db69465a76c63ec22770
     --model_name predrnn \
     --reverse_input 1 \
     --img_width 64 \
