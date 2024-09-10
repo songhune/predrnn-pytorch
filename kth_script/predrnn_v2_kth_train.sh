@@ -1,13 +1,13 @@
-export CUDA_VISIBLE_DEVICES=4
+export CUDA_VISIBLE_DEVICES=0
 cd ..
 python3 -u run.py \
     --is_training 1 \
     --device cuda \
     --dataset_name action \
-    --train_data_paths /workspace/wuhaixu/predrnn/data/kth_action \
-    --valid_data_paths /workspace/wuhaixu/predrnn/data/kth_action \
-    --save_dir checkpoints/kth_predrnn_v2 \
-    --gen_frm_dir results/kth_predrnn_v2 \
+    --train_data_paths /workspace/data/dataset/kth_action \
+    --valid_data_paths /workspace/data/dataset/kth_action \
+    --save_dir /workspace/checkpoints/kth_predrnn_v2 \
+    --gen_frm_dir /workspace/results/kth_predrnn_v2 \
     --model_name predrnn_v2 \
     --visual 0 \
     --reverse_input 1 \

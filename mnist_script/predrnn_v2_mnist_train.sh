@@ -4,10 +4,10 @@ python3 -u run.py \
     --is_training 1 \
     --device cuda:0 \
     --dataset_name mnist \
-    --train_data_paths /data/songhune/data/moving-mnist-example/moving-mnist-train.npz \
-    --valid_data_paths /data/songhune/data/moving-mnist-example/moving-mnist-valid.npz \
-    --save_dir /data/songhune/checkpoints/mnist_predrnn_v2 \
-    --gen_frm_dir /data/songhune/results/mnist_predrnn_v2 \
+    --train_data_paths /workspace/data/dataset/moving-mnist-example/moving-mnist-train.npz \
+    --valid_data_paths /workspace/data/dataset/moving-mnist-example/moving-mnist-valid.npz \
+    --save_dir /workspace/checkpoints/mnist_predrnn128_v2 \
+    --gen_frm_dir /workspace/results/mnist_predrnn128_v2 \
     --model_name predrnn_v2 \
     --reverse_input 1 \
     --img_width 64 \
