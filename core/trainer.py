@@ -103,7 +103,9 @@ def test(model, test_input_handle, configs, itr):
 
             psnr[i] += metrics.batch_psnr(pred_frm, real_frm)
             for b in range(configs.batch_size):
-                score, _ = compare_ssim(pred_frm[b], real_frm[b], full=True, multichannel=True)
+                min_dim = min(pred_frm[b].shape[0], pred_frm[b].shape[1])
+                win_size = min(7, min_dim - 1 if min_dim % 2 == 0 else min_dim)
+                score,_ = compare_ssim(pred_frm[b], real_frm[b], win_size=win_size, full=True, channel_axis=-1)
                 ssim[i] += score
 
         # save prediction examples

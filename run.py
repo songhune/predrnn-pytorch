@@ -9,7 +9,7 @@ from core.data_provider import datasets_factory
 from core.models.model_factory import Model
 from core.utils import preprocess
 import core.trainer as trainer
-
+from knockknock import slack_sender
 # -----------------------------------------------------------------------------
 parser = argparse.ArgumentParser(description='PyTorch video prediction model - PredRNN')
 
@@ -166,7 +166,7 @@ def schedule_sampling(eta, itr):
                                   args.patch_size ** 2 * args.img_channel))
     return eta, real_input_flag
 
-
+@slack_sender(webhook_url='https://hooks.slack.com/services/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',channel='garbages')
 def train_wrapper(model):
     if args.pretrained_model:
         model.load(args.pretrained_model)
@@ -198,7 +198,7 @@ def train_wrapper(model):
 
         train_input_handle.next()
 
-
+@slack_sender(webhook_url='https://hooks.slack.com/services/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',channel='garbages')
 def test_wrapper(model):
     model.load(args.pretrained_model)
     test_input_handle = datasets_factory.data_provider(
