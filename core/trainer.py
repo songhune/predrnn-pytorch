@@ -6,6 +6,9 @@ from skimage.metrics import structural_similarity as compare_ssim
 from core.utils import preprocess, metrics
 import lpips
 import torch
+from skimage import __version__ as skimage_version
+from skimage.transform import resize
+import csv
 
 loss_fn_alex = lpips.LPIPS(net='alex')
 
@@ -23,6 +26,9 @@ def train(model, ims, real_input_flag, configs, itr):
 
 
 def test(model, test_input_handle, configs, itr):
+    # 결과를 저장할 디렉토리 생성
+    result_dir = os.path.join(configs.gen_frm_dir, 'results')
+    os.makedirs(result_dir, exist_ok=True)
     print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'test...')
     test_input_handle.begin(do_shuffle=False)
     res_path = os.path.join(configs.gen_frm_dir, str(itr))
@@ -102,10 +108,26 @@ def test(model, test_input_handle, configs, itr):
             pred_frm = np.uint8(gx * 255)
 
             psnr[i] += metrics.batch_psnr(pred_frm, real_frm)
+            min_size= 7
             for b in range(configs.batch_size):
-                min_dim = min(pred_frm[b].shape[0], pred_frm[b].shape[1])
-                win_size = min(7, min_dim - 1 if min_dim % 2 == 0 else min_dim)
-                score,_ = compare_ssim(pred_frm[b], real_frm[b], win_size=win_size, full=True, channel_axis=-1)
+                pred=pred_frm[b]
+                real=real_frm[b]
+                
+                if pred.ndim == 2:
+                    pred = np.expand_dims(pred, axis=-1)
+                if real.ndim == 2:
+                    real = np.expand_dims(real, axis=-1)    
+                    
+               # 이미지 크기 확인 및 조정 (2번 수정사항)
+                if pred.shape[0] < min_size or pred.shape[1] < min_size:
+                    pred = resize(pred, (max(min_size, pred.shape[0]), max(min_size, pred.shape[1]), pred.shape[2]))
+                    real = resize(real, (max(min_size, real.shape[0]), max(min_size, real.shape[1]), real.shape[2]))
+                
+                # SSIM 계산 (1번 수정사항)
+                if skimage_version >= '0.18':
+                    score, _ = compare_ssim(pred, real, full=True, channel_axis=-1)
+                else:
+                    score, _ = compare_ssim(pred, real, full=True, multichannel=True)
                 ssim[i] += score
 
         # save prediction examples
@@ -146,3 +168,20 @@ def test(model, test_input_handle, configs, itr):
     print('lpips per frame: ' + str(np.mean(lp)))
     for i in range(configs.total_length - configs.input_length):
         print(lp[i])
+
+    # 결과를 저장할 CSV 파일 생성
+    csv_file = os.path.join(result_dir, f'test_results_itr{itr}.csv')
+    
+    with open(csv_file, 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Frame', 'MSE', 'SSIM', 'PSNR', 'LPIPS'])
+
+        # 각 프레임별 결과 저장
+        for i in range(configs.total_length - configs.input_length):
+            mse = img_mse[i] / (batch_id * configs.batch_size)
+            writer.writerow([i+1, mse, ssim[i], psnr[i], lp[i]])
+
+        # 평균값 저장
+        writer.writerow(['Average', avg_mse, np.mean(ssim), np.mean(psnr), np.mean(lp)])
+
+    print(f"Results saved to {csv_file}")
