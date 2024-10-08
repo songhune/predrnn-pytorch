@@ -1,11 +1,11 @@
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=2
 cd ..
 python3 -u run.py \
     --is_training 1 \
     --device cuda \
     --dataset_name mnist \
-    --train_data_paths /workspace/data/data/moving-mnist-example/moving-mnist-train.npz \
-    --valid_data_paths /workspace/data/data/moving-mnist-example/moving-mnist-valid.npz \
+    --train_data_paths /workspace/data/dataset/moving-mnist-example/moving-mnist-train.npz \
+    --valid_data_paths /workspace/data/dataset/moving-mnist-example/moving-mnist-valid.npz \
     --save_dir /workspace/checkpoints/mnist_predrnn_localbi \
     --gen_frm_dir /workspace/results/mnist_predrnn_localbi \
     --model_name predrnn \
