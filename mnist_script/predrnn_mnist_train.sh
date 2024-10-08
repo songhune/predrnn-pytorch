@@ -1,20 +1,21 @@
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=0
 cd ..
 python3 -u run.py \
     --is_training 1 \
     --device cuda \
     --dataset_name mnist \
-    --train_data_paths /workspace/data/dataset/moving-mnist-example/moving-mnist-train.npz \
-    --valid_data_paths /workspace/data/dataset/moving-mnist-example/moving-mnist-valid.npz \
-    --save_dir /workspace/checkpoints/mnist_predrnn64 \
-    --gen_frm_dir /workspace/results/mnist_predrnn64 \
+    --train_data_paths /workspace/data/dataset/climate_train.npz \
+    --valid_data_paths /workspace/data/dataset/climate_val.npz \
+    --save_dir /workspace/checkpoints/climate \
+    --gen_frm_dir /workspace/results/climate \
     --model_name predrnn \
     --reverse_input 1 \
-    --img_width 64 \
+    --img_width 192 \
+    --img_height 288 \
     --img_channel 1 \
     --input_length 10 \
     --total_length 20 \
-    --num_hidden 64,64,64,64 \
+    --num_hidden 128,128,128,128 \
     --filter_size 5 \
     --stride 1 \
     --patch_size 4 \
@@ -29,7 +30,7 @@ python3 -u run.py \
     --sampling_start_value 1.0 \
     --sampling_changing_rate 0.00002 \
     --lr 0.001 \
-    --batch_size 8 \
+    --batch_size 4 \
     --max_iterations 80000 \
     --display_interval 100 \
     --test_interval 5000 \

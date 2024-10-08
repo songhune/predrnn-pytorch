@@ -16,12 +16,13 @@ class RNN(nn.Module):
         cell_list = []
 
         width = configs.img_width // configs.patch_size
+        height = configs.img_height // configs.patch_size
         self.MSE_criterion = nn.MSELoss()
 
         for i in range(num_layers):
             in_channel = self.frame_channel if i == 0 else num_hidden[i - 1]
             cell_list.append(
-                SpatioTemporalLSTMCell(in_channel, num_hidden[i], width, configs.filter_size,
+                SpatioTemporalLSTMCell(in_channel, num_hidden[i], width,height, configs.filter_size,
                                        configs.stride, configs.layer_norm)
             )
         self.cell_list = nn.ModuleList(cell_list)

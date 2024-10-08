@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 
 class SpatioTemporalLSTMCell(nn.Module):
-    def __init__(self, in_channel, num_hidden, width, filter_size, stride, layer_norm):
+    def __init__(self, in_channel, num_hidden, width, height,filter_size, stride, layer_norm):
         super(SpatioTemporalLSTMCell, self).__init__()
 
         self.num_hidden = num_hidden
@@ -13,19 +13,19 @@ class SpatioTemporalLSTMCell(nn.Module):
         if layer_norm:
             self.conv_x = nn.Sequential(
                 nn.Conv2d(in_channel, num_hidden * 7, kernel_size=filter_size, stride=stride, padding=self.padding, bias=False),
-                nn.LayerNorm([num_hidden * 7, width, width])
+                nn.LayerNorm([num_hidden * 7, width, height])
             )
             self.conv_h = nn.Sequential(
                 nn.Conv2d(num_hidden, num_hidden * 4, kernel_size=filter_size, stride=stride, padding=self.padding, bias=False),
-                nn.LayerNorm([num_hidden * 4, width, width])
+                nn.LayerNorm([num_hidden * 4, width, height])
             )
             self.conv_m = nn.Sequential(
                 nn.Conv2d(num_hidden, num_hidden * 3, kernel_size=filter_size, stride=stride, padding=self.padding, bias=False),
-                nn.LayerNorm([num_hidden * 3, width, width])
+                nn.LayerNorm([num_hidden * 3, width, height])
             )
             self.conv_o = nn.Sequential(
                 nn.Conv2d(num_hidden * 2, num_hidden, kernel_size=filter_size, stride=stride, padding=self.padding, bias=False),
-                nn.LayerNorm([num_hidden, width, width])
+                nn.LayerNorm([num_hidden, width, height])
             )
         else:
             self.conv_x = nn.Sequential(

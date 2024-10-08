@@ -9,11 +9,13 @@ import torch
 from skimage import __version__ as skimage_version
 from skimage.transform import resize
 import csv
-
+import logging 
 loss_fn_alex = lpips.LPIPS(net='alex')
-
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def train(model, ims, real_input_flag, configs, itr):
+    logger.info(f"Training iteration {itr}")
     cost = model.train(ims, real_input_flag)
     if configs.reverse_input:
         ims_rev = np.flip(ims, axis=1).copy()
@@ -54,7 +56,7 @@ def test(model, test_input_handle, configs, itr):
         (configs.batch_size,
          configs.total_length - mask_input - 1,
          configs.img_width // configs.patch_size,
-         configs.img_width // configs.patch_size,
+         configs.img_height // configs.patch_size,
          configs.patch_size ** 2 * configs.img_channel))
 
     if configs.reverse_scheduled_sampling == 1:
@@ -81,7 +83,7 @@ def test(model, test_input_handle, configs, itr):
             img_mse[i] += mse
             avg_mse += mse
             # cal lpips
-            img_x = np.zeros([configs.batch_size, 3, configs.img_width, configs.img_width])
+            img_x = np.zeros([configs.batch_size, 3, configs.img_width, configs.img_height])
             if configs.img_channel == 3:
                 img_x[:, 0, :, :] = x[:, :, :, 0]
                 img_x[:, 1, :, :] = x[:, :, :, 1]
@@ -91,7 +93,7 @@ def test(model, test_input_handle, configs, itr):
                 img_x[:, 1, :, :] = x[:, :, :, 0]
                 img_x[:, 2, :, :] = x[:, :, :, 0]
             img_x = torch.FloatTensor(img_x)
-            img_gx = np.zeros([configs.batch_size, 3, configs.img_width, configs.img_width])
+            img_gx = np.zeros([configs.batch_size, 3, configs.img_width, configs.img_height])
             if configs.img_channel == 3:
                 img_gx[:, 0, :, :] = gx[:, :, :, 0]
                 img_gx[:, 1, :, :] = gx[:, :, :, 1]

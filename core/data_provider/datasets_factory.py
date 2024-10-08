@@ -8,7 +8,7 @@ datasets_map = {
 
 
 def data_provider(dataset_name, train_data_paths, valid_data_paths, batch_size,
-                  img_width, seq_length, injection_action, is_training=True):
+                  img_width, img_height,seq_length, injection_action, is_training=True):
     if dataset_name not in datasets_map:
         raise ValueError('Name of dataset unknown %s' % dataset_name)
     train_data_list = train_data_paths.split(',')
@@ -36,6 +36,7 @@ def data_provider(dataset_name, train_data_paths, valid_data_paths, batch_size,
     if dataset_name == 'action':
         input_param = {'paths': valid_data_list,
                        'image_width': img_width,
+                       'image_height': img_height,
                        'minibatch_size': batch_size,
                        'seq_length': seq_length,
                        'input_data_type': 'float32',

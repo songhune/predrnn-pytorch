@@ -9,7 +9,9 @@ from core.data_provider import datasets_factory
 from core.models.model_factory import Model
 from core.utils import preprocess
 import core.trainer as trainer
-from knockknock import slack_sender
+import logging
+
+#from knockknock import slack_sender
 # -----------------------------------------------------------------------------
 parser = argparse.ArgumentParser(description='PyTorch video prediction model - PredRNN')
 
@@ -19,19 +21,20 @@ parser.add_argument('--device', type=str, default='cpu:0')
 
 # data
 parser.add_argument('--dataset_name', type=str, default='mnist')
-parser.add_argument('--train_data_paths', type=str, default='/data/songhune/data/moving-mnist-example/moving-mnist-train.npz')
-parser.add_argument('--valid_data_paths', type=str, default='/data/songhune/data/moving-mnist-example/moving-mnist-valid.npz')
-parser.add_argument('--save_dir', type=str, default='/data/songhune/checkpoints/mnist_predrnn')
-parser.add_argument('--gen_frm_dir', type=str, default='/data/songhune/results/mnist_predrnn')
+parser.add_argument('--train_data_paths', type=str, default='/data/songhune/data/climate_train.npz')
+parser.add_argument('--valid_data_paths', type=str, default='/data/songhune/data/climate_val.npz')
+parser.add_argument('--save_dir', type=str, default='/data/songhune/checkpoints/climate')
+parser.add_argument('--gen_frm_dir', type=str, default='/data/songhune/results/climate')
 parser.add_argument('--input_length', type=int, default=10)
 parser.add_argument('--total_length', type=int, default=20)
-parser.add_argument('--img_width', type=int, default=64)
+parser.add_argument('--img_width', type=int, default=288)
+parser.add_argument('--img_height', type=int, default=192)
 parser.add_argument('--img_channel', type=int, default=1)
 
 # model
 parser.add_argument('--model_name', type=str, default='predrnn')
 parser.add_argument('--pretrained_model', type=str, default='')
-parser.add_argument('--num_hidden', type=str, default='64,64,64,64')
+parser.add_argument('--num_hidden', type=str, default='128,128,128,128')
 parser.add_argument('--filter_size', type=int, default=5)
 parser.add_argument('--stride', type=int, default=1)
 parser.add_argument('--patch_size', type=int, default=4)
@@ -52,7 +55,7 @@ parser.add_argument('--sampling_changing_rate', type=float, default=0.00002)
 # optimization
 parser.add_argument('--lr', type=float, default=0.001)
 parser.add_argument('--reverse_input', type=int, default=1)
-parser.add_argument('--batch_size', type=int, default=8)
+parser.add_argument('--batch_size', type=int, default=4)
 parser.add_argument('--max_iterations', type=int, default=80000)
 parser.add_argument('--display_interval', type=int, default=100)
 parser.add_argument('--test_interval', type=int, default=5000)
@@ -72,7 +75,8 @@ parser.add_argument('--num_action_ch', type=int, default=4, help='num action ch'
 
 args = parser.parse_args()
 print(args)
-
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def reserve_schedule_sampling_exp(itr):
     if itr < args.r_sampling_step_1:
@@ -98,10 +102,10 @@ def reserve_schedule_sampling_exp(itr):
     true_token = (random_flip < eta)
 
     ones = np.ones((args.img_width // args.patch_size,
-                    args.img_width // args.patch_size,
+                    args.img_height // args.patch_size,
                     args.patch_size ** 2 * args.img_channel))
     zeros = np.zeros((args.img_width // args.patch_size,
-                      args.img_width // args.patch_size,
+                      args.img_height // args.patch_size,
                       args.patch_size ** 2 * args.img_channel))
 
     real_input_flag = []
@@ -123,7 +127,7 @@ def reserve_schedule_sampling_exp(itr):
                                  (args.batch_size,
                                   args.total_length - 2,
                                   args.img_width // args.patch_size,
-                                  args.img_width // args.patch_size,
+                                  args.img_height // args.patch_size,
                                   args.patch_size ** 2 * args.img_channel))
     return real_input_flag
 
@@ -132,7 +136,7 @@ def schedule_sampling(eta, itr):
     zeros = np.zeros((args.batch_size,
                       args.total_length - args.input_length - 1,
                       args.img_width // args.patch_size,
-                      args.img_width // args.patch_size,
+                      args.img_height // args.patch_size,
                       args.patch_size ** 2 * args.img_channel))
     if not args.scheduled_sampling:
         return 0.0, zeros
@@ -145,10 +149,10 @@ def schedule_sampling(eta, itr):
         (args.batch_size, args.total_length - args.input_length - 1))
     true_token = (random_flip < eta)
     ones = np.ones((args.img_width // args.patch_size,
-                    args.img_width // args.patch_size,
+                    args.img_height // args.patch_size,
                     args.patch_size ** 2 * args.img_channel))
     zeros = np.zeros((args.img_width // args.patch_size,
-                      args.img_width // args.patch_size,
+                      args.img_height // args.patch_size,
                       args.patch_size ** 2 * args.img_channel))
     real_input_flag = []
     for i in range(args.batch_size):
@@ -162,22 +166,24 @@ def schedule_sampling(eta, itr):
                                  (args.batch_size,
                                   args.total_length - args.input_length - 1,
                                   args.img_width // args.patch_size,
-                                  args.img_width // args.patch_size,
+                                  args.img_height // args.patch_size,
                                   args.patch_size ** 2 * args.img_channel))
     return eta, real_input_flag
 
-@slack_sender(webhook_url='https://hooks.slack.com/services/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',channel='garbages')
+#_sender(webhook_url='https://hooks.slack.com/services/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',channel='garbages')
 def train_wrapper(model):
     if args.pretrained_model:
         model.load(args.pretrained_model)
     # load data
     train_input_handle, test_input_handle = datasets_factory.data_provider(
-        args.dataset_name, args.train_data_paths, args.valid_data_paths, args.batch_size, args.img_width,
+        args.dataset_name, args.train_data_paths, args.valid_data_paths, args.batch_size, args.img_width, args.img_height,
         seq_length=args.total_length, injection_action=args.injection_action, is_training=True)
 
     eta = args.sampling_start_value
+    logger.info("Starting training...")
 
     for itr in range(1, args.max_iterations + 1):
+        logger.info(f"Iteration {itr}")
         if train_input_handle.no_batch_left():
             train_input_handle.begin(do_shuffle=True)
         ims = train_input_handle.get_batch()
@@ -198,11 +204,11 @@ def train_wrapper(model):
 
         train_input_handle.next()
 
-@slack_sender(webhook_url='https://hooks.slack.com/services/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',channel='garbages')
+#@slack_sender(webhook_url='https://hooks.slack.com/services/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',channel='garbages')
 def test_wrapper(model):
     model.load(args.pretrained_model)
     test_input_handle = datasets_factory.data_provider(
-        args.dataset_name, args.train_data_paths, args.valid_data_paths, args.batch_size, args.img_width,
+        args.dataset_name, args.train_data_paths, args.valid_data_paths, args.batch_size, args.img_width, args.img_height,
         seq_length=args.total_length, injection_action=args.injection_action, is_training=False)
     trainer.test(model, test_input_handle, args, 'test_result')
 
