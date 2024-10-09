@@ -3,7 +3,9 @@ __author__ = 'yunbo'
 import numpy as np
 
 def reshape_patch(img_tensor, patch_size):
-    assert 5 == img_tensor.ndim
+    print("reshape_patch input shape:", img_tensor.shape)
+    print("patch_size:", patch_size)
+    assert 5 == img_tensor.ndim, f"Expected 5D tensor, got {img_tensor.ndim}D"
     batch_size = np.shape(img_tensor)[0]
     seq_length = np.shape(img_tensor)[1]
     img_height = np.shape(img_tensor)[2]

@@ -1,17 +1,17 @@
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=1
 cd ..
 python3 -u run.py \
     --is_training 1 \
     --device cuda \
     --dataset_name mnist \
-    --train_data_paths /workspace/data/dataset/climate_train.npz \
-    --valid_data_paths /workspace/data/dataset/climate_val.npz \
-    --save_dir /workspace/checkpoints/climate \
-    --gen_frm_dir /workspace/results/climate \
+    --train_data_paths /workspace/data/dataset/tosna_train_padded.npz \
+    --valid_data_paths /workspace/data/dataset/tosna_val_padded.npz \
+    --save_dir /workspace/checkpoints/tosna \
+    --gen_frm_dir /workspace/results/tosna \
     --model_name predrnn \
     --reverse_input 1 \
-    --img_width 192 \
-    --img_height 288 \
+    --img_width 72 \
+    --img_height 128 \
     --img_channel 1 \
     --input_length 10 \
     --total_length 20 \

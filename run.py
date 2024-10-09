@@ -21,10 +21,10 @@ parser.add_argument('--device', type=str, default='cpu:0')
 
 # data
 parser.add_argument('--dataset_name', type=str, default='mnist')
-parser.add_argument('--train_data_paths', type=str, default='/data/songhune/data/climate_train.npz')
-parser.add_argument('--valid_data_paths', type=str, default='/data/songhune/data/climate_val.npz')
-parser.add_argument('--save_dir', type=str, default='/data/songhune/checkpoints/climate')
-parser.add_argument('--gen_frm_dir', type=str, default='/data/songhune/results/climate')
+parser.add_argument('--train_data_paths', type=str, default='/data/songhune/data/tosna_train.npz')
+parser.add_argument('--valid_data_paths', type=str, default='/data/songhune/data/tosna_val.npz')
+parser.add_argument('--save_dir', type=str, default='/data/songhune/checkpoints/tosna')
+parser.add_argument('--gen_frm_dir', type=str, default='/data/songhune/results/tosna')
 parser.add_argument('--input_length', type=int, default=10)
 parser.add_argument('--total_length', type=int, default=20)
 parser.add_argument('--img_width', type=int, default=288)
@@ -187,7 +187,10 @@ def train_wrapper(model):
         if train_input_handle.no_batch_left():
             train_input_handle.begin(do_shuffle=True)
         ims = train_input_handle.get_batch()
+        print("ims shape before reshape_patch:", ims.shape)
+
         ims = preprocess.reshape_patch(ims, args.patch_size)
+        print("ims shape after reshape_patch:", ims.shape)
 
         if args.reverse_scheduled_sampling == 1:
             real_input_flag = reserve_schedule_sampling_exp(itr)
