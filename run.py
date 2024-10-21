@@ -219,6 +219,9 @@ os.makedirs(args.gen_frm_dir)
 print('Initializing models')
 
 model = Model(args)
+# 모델 요약 출력
+print('Model summary:')
+model.summary()
 
 if args.is_training:
     train_wrapper(model)

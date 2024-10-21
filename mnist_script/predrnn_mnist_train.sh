@@ -6,15 +6,15 @@ python3 -u run.py \
     --dataset_name mnist \
     --train_data_paths /workspace/data/dataset/moving-mnist-example/moving-mnist-train.npz \
     --valid_data_paths /workspace/data/dataset/moving-mnist-example/moving-mnist-valid.npz \
-    --save_dir /workspace/checkpoints/mnist_predrnn256 \
-    --gen_frm_dir /workspace/results/mnist_predrnn256 \
+    --save_dir /workspace/checkpoints/mnist_predrnn128_w_summary \
+    --gen_frm_dir /workspace/results/mnist_predrnn128_w_summary \
     --model_name predrnn \
     --reverse_input 1 \
     --img_width 64 \
     --img_channel 1 \
     --input_length 10 \
     --total_length 20 \
-    --num_hidden 256,256,256,256 \
+    --num_hidden 128,128,128,128 \
     --filter_size 5 \
     --stride 1 \
     --patch_size 4 \
