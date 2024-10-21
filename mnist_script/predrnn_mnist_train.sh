@@ -6,8 +6,8 @@ python3 -u run.py \
     --dataset_name mnist \
     --train_data_paths /workspace/data/dataset/moving-mnist-example/moving-mnist-train.npz \
     --valid_data_paths /workspace/data/dataset/moving-mnist-example/moving-mnist-valid.npz \
-    --save_dir /workspace/checkpoints/mnist_predrnn_localbi \
-    --gen_frm_dir /workspace/results/mnist_predrnn_localbi \
+    --save_dir /workspace/checkpoints/mnist_predrnn128_w_summary \
+    --gen_frm_dir /workspace/results/mnist_predrnn128_w_summary \
     --model_name predrnn \
     --reverse_input 1 \
     --min_window_size 5 \
@@ -20,14 +20,28 @@ python3 -u run.py \
     --filter_size 5 \
     --stride 1 \
     --patch_size 4 \
-    --layer_norm 0 \
+    --layer_norm 1 \
+    --decouple_beta 0.1 \
+    --reverse_scheduled_sampling 0 \
+    --r_sampling_step_1 25000 \
+    --r_sampling_step_2 50000 \
+    --r_exp_alpha 5000 \
     --scheduled_sampling 1 \
     --sampling_stop_iter 50000 \
     --sampling_start_value 1.0 \
     --sampling_changing_rate 0.00002 \
-    --lr 0.0003 \
+    --lr 0.001 \
     --batch_size 8 \
     --max_iterations 80000 \
     --display_interval 100 \
     --test_interval 5000 \
-    --snapshot_interval 5000
+    --snapshot_interval 5000 \
+    --num_save_samples 10 \
+    --n_gpu 1 \
+    --visual 0 \
+    --visual_path ./decoupling_visual \
+    --injection_action concat \
+    --conv_on_input 0 \
+    --res_on_conv 0 \
+    --num_action_ch 4 \
+    #--pretrained_model /workspace/checkpoints/mnist_predrnn256/model.ckpt-5000
